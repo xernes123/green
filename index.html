@@ -252,6 +252,45 @@
     .hstat{text-align:left;}
     .countdown-grid{grid-template-columns:repeat(4,1fr);}
   }
+
+  @media (max-width:600px){
+    .wrap{padding:12px 12px 36px;}
+    header{gap:12px;margin-bottom:14px;}
+    .brand{gap:9px;}
+    .flask{width:36px;height:36px;}
+    .brand h1{font-size:18px;}
+    .brand h1 span{display:block;font-size:12px;margin-top:2px;}
+    .brand .sub{font-size:9px;line-height:1.4;}
+    header > div:last-child{width:100%;display:grid !important;grid-template-columns:1fr;gap:7px !important;}
+    .status-pill{width:100%;justify-content:flex-start;padding:9px 11px;font-size:11px;}
+    .status-pill button{margin-left:auto !important;padding:4px 10px !important;}
+    .hero{padding:22px 16px 18px;margin-bottom:12px;}
+    .hero-top{gap:22px;}
+    .price-block{width:100%;}
+    .price-block .label{font-size:10px;}
+    .price-block .price{font-size:64px;letter-spacing:-0.06em;margin-top:10px;}
+    .price-block .price .ccy{font-size:25px;}
+    .price-change{font-size:15px;margin-top:12px;}
+    .hero-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px;width:100%;}
+    .hstat .l{font-size:9px;}
+    .hstat .v{font-size:13px;overflow-wrap:anywhere;}
+    .range-bar{margin-top:20px;}
+    .range-labels{gap:8px;font-size:9px;line-height:1.35;}
+    .range-labels span{text-align:center;min-width:0;}
+    .range-labels span:first-child,.range-labels span:last-child{max-width:78px;}
+    .card,.news-section{padding:16px 14px;}
+    .card h2{font-size:15px;}
+    .card .hint{font-size:10px;line-height:1.5;}
+    .chart-holder{height:340px;}
+    .tape-item{padding:0 16px;font-size:10px;}
+  }
+
+  @media (max-width:380px){
+    .price-block .price{font-size:54px;}
+    .hero-stats{gap:11px 12px;}
+    .hstat .v{font-size:12px;}
+    .chart-holder{height:300px;}
+  }
 </style>
 </head>
 <body>

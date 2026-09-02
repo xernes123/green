@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADUR · Reaktorpanel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+  :root{
+    --bg: #081210;
+    --bg-elev: #0d1c18;
+    --bg-card: #10221d;
+    --bg-card2: #0e1f1a;
+    --line: rgba(158,201,188,0.14);
+    --line-strong: rgba(158,201,188,0.28);
+    --text-primary: #eaf3ee;
+    --text-secondary: #85a49b;
+    --text-dim: #547268;
+    --green: #3fe8a6;
+    --green-dim: rgba(63,232,166,0.14);
+    --red: #ff6b5c;
+    --red-dim: rgba(255,107,92,0.14);
+    --amber: #f2c14e;
+    --amber-dim: rgba(242,193,78,0.14);
+    --glow: rgba(63,232,166,0.35);
+    --radius: 14px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(63,232,166,0.07), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 0%, rgba(242,193,78,0.05), transparent 60%),
+      var(--bg);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--green-dim);color:var(--green);}
+
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 22px 60px;}
+
+  /* ---------- Ticker tape ---------- */
+  .tape{
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:var(--bg-elev);
+    margin-bottom:20px;
+    white-space:nowrap;
+  }
+  .tape-inner{
+    display:inline-flex;
+    animation: scroll-tape 32s linear infinite;
+    padding:9px 0;
+  }
+  .tape-item{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-secondary);
+    padding:0 28px;
+    border-right:1px solid var(--line);
+    letter-spacing:0.02em;
+  }
+  .tape-item b{color:var(--text-primary);font-weight:600;}
+  .tape-item .up{color:var(--green);}
+  .tape-item .down{color:var(--red);}
+  @keyframes scroll-tape{
+    0%{transform:translateX(0);}
+    100%{transform:translateX(-50%);}
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .flask{width:44px;height:44px;flex-shrink:0;}
+  .brand h1{
+    font-family:var(--font-display);
+    font-size:24px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  .brand .sub{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-secondary);
+    margin-top:2px;
+  }
+  .status-pill{
+    display:flex;align-items:center;gap:8px;
+    background:var(--bg-elev);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 14px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-secondary);
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;}
+  .dot.live{background:var(--green);box-shadow:0 0 0 0 var(--glow);animation:pulse 1.8s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 var(--glow);}
+    70%{box-shadow:0 0 0 8px rgba(63,232,166,0);}
+    100%{box-shadow:0 0 0 0 rgba(63,232,166,0);}
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    background:linear-gradient(180deg, var(--bg-card), var(--bg-card2));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 28px;
+    margin-bottom:18px;
+    position:relative;
+    overflow:hidden;
+    transition:border-color .4s ease, box-shadow .4s ease;
+  }
+  .hero.flash-up{border-color:rgba(63,232,166,0.55);box-shadow:0 0 40px -12px var(--glow);}
+  .hero.flash-down{border-color:rgba(255,107,92,0.55);box-shadow:0 0 40px -12px rgba(255,107,92,0.35);}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
+  .price-block .label{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);letter-spacing:0.06em;text-transform:uppercase;}
+  .price-block .price{
+    font-family:var(--font-mono);
+    font-size:56px;
+    font-weight:700;
+    line-height:1;
+    margin-top:8px;
+    display:flex;align-items:baseline;gap:14px;
+  }
+  .price-block .price .ccy{font-size:22px;color:var(--text-dim);font-weight:500;}
+  .price-change{font-family:var(--font-mono);font-size:16px;font-weight:600;margin-top:10px;display:flex;align-items:center;gap:6px;}
+  .price-change.up{color:var(--green);}
+  .price-change.down{color:var(--red);}
+  .hero-stats{display:flex;gap:26px;flex-wrap:wrap;}
+  .hstat{text-align:right;}
+  .hstat .l{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;}
+  .hstat .v{font-family:var(--font-mono);font-size:15px;color:var(--text-primary);margin-top:4px;font-weight:600;}
+  .range-bar{margin-top:22px;}
+  .range-track{position:relative;height:5px;border-radius:3px;background:var(--line);overflow:visible;}
+  .range-fill{position:absolute;top:0;left:0;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));opacity:0.35;}
+  .range-marker{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--text-primary);border:2px solid var(--bg-card);transform:translate(-50%,-50%);transition:left .6s ease;box-shadow:0 0 8px rgba(0,0,0,0.5);}
+  .range-labels{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;}
+
+  /* ---------- Grid ---------- */
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-bottom:18px;}
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+  }
+  .card h2{
+    font-family:var(--font-display);
+    font-size:14px;
+    font-weight:600;
+    margin:0 0 4px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .card .hint{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;}
+  .chart-holder{height:280px;}
+
+  .side-stack{display:flex;flex-direction:column;gap:18px;}
+
+  /* ---------- Gauge ---------- */
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;}
+  .gauge-svg{width:100%;max-width:230px;}
+  .needle{transform-origin:115px 118px;transition:transform 1s cubic-bezier(.34,1.56,.64,1);}
+  .gauge-readout{
+    font-family:var(--font-mono);
+    font-size:22px;
+    font-weight:700;
+    margin-top:-38px;
+    text-align:center;
+  }
+  .gauge-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-align:center;
+    margin-top:2px;
+    padding:4px 12px;
+    border-radius:999px;
+    display:inline-block;
+  }
+  .gauge-legend{display:flex;justify-content:space-between;width:100%;max-width:230px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:6px;}
+
+  /* ---------- Countdown ---------- */
+  .countdown-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;}
+  .cd-box{
+    background:var(--bg-elev);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 4px;
+    text-align:center;
+  }
+  .cd-box .num{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--green);}
+  .cd-box .unit{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;margin-top:2px;}
+  .market-note{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);margin-top:12px;line-height:1.6;}
+  .market-note b{color:var(--text-primary);}
+
+  /* ---------- News / process log ---------- */
+  .news-section{background:var(--bg-card);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px 8px;}
+  .news-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .news-head h2{font-family:var(--font-display);font-size:16px;margin:0;}
+  .timeline{position:relative;padding-left:26px;}
+  .timeline::before{content:'';position:absolute;left:6px;top:6px;bottom:20px;width:1px;background:var(--line-strong);}
+  .t-item{position:relative;padding-bottom:26px;}
+  .t-dot{position:absolute;left:-26px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--bg-card);border:2px solid var(--green);}
+  .t-item.amber .t-dot{border-color:var(--amber);}
+  .t-item.dim .t-dot{border-color:var(--text-dim);}
+  .t-date{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);letter-spacing:0.04em;}
+  .t-title{font-family:var(--font-display);font-size:15px;font-weight:600;margin:4px 0 6px;}
+  .t-body{font-size:13.5px;color:var(--text-secondary);line-height:1.6;max-width:680px;}
+  .t-tag{
+    display:inline-block;margin-top:8px;
+    font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.04em;
+    padding:3px 10px;border-radius:999px;
+    background:var(--green-dim);color:var(--green);
+    text-transform:uppercase;
+  }
+  .t-item.amber .t-tag{background:var(--amber-dim);color:var(--amber);}
+  .t-item.dim .t-tag{background:rgba(133,164,155,0.12);color:var(--text-secondary);}
+
+  footer{
+    margin-top:24px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-dim);
+    line-height:1.7;
+    border-top:1px solid var(--line);
+    padding-top:16px;
+  }
+
+  @media (max-width:860px){
+    .grid{grid-template-columns:1fr;}
+    .price-block .price{font-size:40px;}
+    .hero-stats{gap:16px;}
+    .hstat{text-align:left;}
+    .countdown-grid{grid-template-columns:repeat(4,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="tape">
+    <div class="tape-inner" id="tapeInner"></div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <svg class="flask" viewBox="0 0 48 48" fill="none">
+        <path d="M19 6h10v9l9 20a3 3 0 01-2.7 4.3H12.7A3 3 0 0110 35l9-20V6z" stroke="#3fe8a6" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M14 30h20" stroke="#3fe8a6" stroke-width="2"/>
+        <circle cx="19" cy="24" r="1.4" fill="#3fe8a6"><animate attributeName="cy" values="24;10;24" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" dur="4s" repeatCount="indefinite"/></circle>
+        <circle cx="26" cy="27" r="1" fill="#f2c14e"><animate attributeName="cy" values="27;12;27" dur="3.2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" dur="3.2s" repeatCount="indefinite"/></circle>
+      </svg>
+      <div>
+        <h1>ADUR <span style="color:var(--text-dim);font-weight:500;">— Aduro Clean Technologies</span></h1>
+        <div class="sub">NASDAQ · CSE: ACT · Hydrochemolytic™ Technology</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="status-pill">
+        <span class="dot" id="marketDot"></span>
+        <span id="marketStatusText">Kontrollerar marknad…</span>
+      </div>
+      <div class="status-pill">
+        <span class="dot" id="feedDot"></span>
+        <span id="feedStatusText">Ansluter till kursdata…</span>
+        <button id="retryFeedBtn" style="margin-left:4px;background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:999px;padding:2px 9px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">Försök igen</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="hero" id="heroCard">
+    <div class="hero-top">
+      <div class="price-block">
+        <div class="label" id="priceSourceLabel">Senast (ansluter…)</div>
+        <div class="price"><span class="ccy">$</span><span id="priceMain">15.69</span></div>
+        <div class="price-change up" id="priceChange">+0.00 (+0.00%) sedan referens</div>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat"><div class="l">Marketcap</div><div class="v" id="statCap">$530.9M</div></div>
+        <div class="hstat"><div class="l">Volym</div><div class="v" id="statVol">288 481</div></div>
+        <div class="hstat"><div class="l">P/E</div><div class="v">neg. (ej lönsamt)</div></div>
+        <div class="hstat"><div class="l">Nästa rapport</div><div class="v">13 aug</div></div>
+      </div>
+    </div>
+    <div class="range-bar">
+      <div class="range-track">
+        <div class="range-fill" style="width:100%"></div>
+        <div class="range-marker" id="rangeMarker" style="left:70%"></div>
+      </div>
+      <div class="range-labels">
+        <span>52v Lägst $9.00</span>
+        <span id="dayRangeLabel">Dagens intervall simuleras live</span>
+        <span>52v Högst $18.19</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Kursrörelse <span style="font-weight:400;color:var(--text-dim);font-size:11px;font-family:var(--font-mono);">senaste 60 tick</span></h2>
+      <div class="hint" id="chartHint">Hämtar riktiga kurspunkter var 20:e sekund. Mellan hämtningarna ritas en mjuk mikrorörelse kring senast kända pris.</div>
+      <div id="keyBox" style="background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-primary);font-weight:600;margin-bottom:4px;">Anslut riktig livedata (Finnhub, gratis)</div>
+        <div style="font-family:var(--font-body);font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px;">
+          Fria CORS-reläer är för opålitliga för realtidsdata. Skapa en gratis nyckel på
+          <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color:var(--green);">finnhub.io/register</a>
+          (ingen betalning krävs) och klistra in den nedan — den sparas bara i din egen webbläsare.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="finnhubKeyInput" type="text" placeholder="Klistra in din Finnhub API-nyckel här"
+                 style="flex:1;min-width:220px;background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text-primary);font-family:var(--font-mono);font-size:12px;">
+          <button id="saveKeyBtn" style="background:var(--green);border:none;color:#04150f;font-weight:700;border-radius:8px;padding:8px 16px;font-family:var(--font-mono);font-size:12px;cursor:pointer;">Spara &amp; anslut</button>
+          <button id="clearKeyBtn" style="background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:8px;padding:8px 14px;font-family:var(--font-mono);font-size:12px;cursor:pointer;">Ta bort nyckel</button>
+        </div>
+        <div id="keyStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;"></div>
+      </div>
+      <div id="diagBox" style="display:none;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:var(--font-mono);font-size:11.5px;line-height:1.7;color:var(--text-secondary);">
+        <div style="color:var(--text-primary);font-weight:600;margin-bottom:4px;">Diagnos — senaste hämtningsförsöket (reservkälla utan nyckel)</div>
+        <div id="diagLines"></div>
+      </div>
+      <div class="chart-holder"><canvas id="priceChart"></canvas></div>
+    </div>
+
+    <div class="side-stack">
+      <div class="card">
+        <h2>Köp/sälj-mätare</h2>
+        <div class="hint">Illustrativ momentum-indikator, ej finansiell rådgivning.</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 230 140">
+            <path d="M15 118 A100 100 0 0 1 68 30" fill="none" stroke="#ff6b5c" stroke-width="14" stroke-linecap="round"/>
+            <path d="M72 27 A100 100 0 0 1 158 27" fill="none" stroke="#f2c14e" stroke-width="14" stroke-linecap="round"/>
+            <path d="M162 30 A100 100 0 0 1 215 118" fill="none" stroke="#3fe8a6" stroke-width="14" stroke-linecap="round"/>
+            <g class="needle" id="needle">
+              <line x1="115" y1="118" x2="115" y2="34" stroke="#eaf3ee" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="115" cy="118" r="7" fill="#eaf3ee"/>
+            </g>
+          </svg>
+          <div class="gauge-readout" id="gaugeScore">50</div>
+          <div class="gauge-label" id="gaugeLabel" style="background:var(--amber-dim);color:var(--amber);">HÅLL</div>
+          <div class="gauge-legend"><span>SÄLJ</span><span>HÅLL</span><span>KÖP</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Nästa öppning · US-börsen</h2>
+        <div class="hint" id="cdHint">Räknar ned till Nasdaq/NYSE öppning, 09:30 ET</div>
+        <div class="countdown-grid">
+          <div class="cd-box"><div class="num" id="cdD">00</div><div class="unit">Dagar</div></div>
+          <div class="cd-box"><div class="num" id="cdH">00</div><div class="unit">Tim</div></div>
+          <div class="cd-box"><div class="num" id="cdM">00</div><div class="unit">Min</div></div>
+          <div class="cd-box"><div class="num" id="cdS">00</div><div class="unit">Sek</div></div>
+        </div>
+        <div class="market-note">Din lokala tid: <b id="localTime">–</b><br>Nästa öppning (din tid): <b id="openLocal">–</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="news-section">
+    <div class="news-head">
+      <h2>Processlogg — hur långt ADUR har kommit</h2>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">Källor: bolagets pressmeddelanden &amp; finansmedier</span>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <footer>
+    Denna sida försöker hämta en verklig ADUR-kurs var 20:e sekund från Stooqs offentliga, nyckelfria kursdata (kan vara
+    fördröjd och är inte en officiell börs- eller mäklarkoppling). Statusmärket "Kursdata" i headern visar om hämtningen
+    lyckas just nu i din webbläsare — vissa nätverk eller webbläsarinställningar kan blockera anropet, och panelen växlar
+    då automatiskt till en tydligt märkt uppskattad rörelse kring senast kända stängningskurs. Köp/sälj-mätaren är alltid en
+    illustrativ momentum-indikator, inte ett verkligt handelssignalsystem. Nedräkningen till USA:s börsöppning är beräknad
+    utifrån verklig Nasdaq/NYSE-handelstid (09:30–16:00 ET, måndag–fredag) men tar inte hänsyn till amerikanska
+    börshelgdagar. Processloggen bygger på verkliga, allmänt tillgängliga nyheter men är sammanfattad — inget innehåll är
+    citerat ordagrant. Detta är inte finansiell rådgivning.
+  </footer>
+
+</div>
+
+<script>
+/* ===================== DATA ===================== */
+const REF_PRICE = 15.69;      // senast kända verkliga stängningskurs
+const WK52_HIGH = 18.19;
+const WK52_LOW = 9.00;
+const BASE_CAP_M = 530.9;     // miljoner USD vid referenspris
+const BASE_VOL = 288481;
+
+const NEWS = [
+  {
+    date: "30 juli 2026",
+    title: "Råoljeleveranser säkrade från Uinta-bassängen",
+    body: "Aduro meddelade att man säkrat råoljeleveranser till sitt paraffiniska råoljeprogram och slutfört en genomströmningsanläggning. Programmet beskrivs ha nått fasen för teknikdemonstration, ett steg närmare att visa processen i större skala.",
+    tag: "Teknikdemonstration",
+    cls: ""
+  },
+  {
+    date: "28 maj 2026",
+    title: "Notering på TSX under kortnamnet ACT slutgiltigt godkänd",
+    body: "Efter tidigare villkorat godkännande fick Aduro slutgiltigt klartecken för notering på TSX (handel inleddes 27 maj), samtidigt som avnotering från CSE planerades. Bolaget meddelade även utökning av sin Hydrochemolytic-teknik mot paraffinisk råolja via ett medlemskap i Utah Petroleum Association.",
+    tag: "Notering & expansion",
+    cls: "amber"
+  },
+  {
+    date: "Juni 2026",
+    title: "Deltagande i flera bransch- och investerarkonferenser",
+    body: "Bolaget meddelade medverkan vid flera konferenser under juni, bland annat AMI Chemical Recycling Europe, Canadian Climate Investor Conference, ROTH London Conference och Future of Advanced Recycling North America — med fokus på att visa upp Hydrochemolytic-tekniken och planeringen av en fullskalig (FOAK) anläggning.",
+    tag: "Investerarrelationer",
+    cls: "dim"
+  },
+  {
+    date: "2026 (löpande)",
+    title: "Avsiktsförklaring om avsättning av Hydrochemolytic-olja",
+    body: "En icke-bindande avsiktsförklaring (LOI) tecknades med en handelspartner som åtar sig att köpa den första produktionsbatchen olja när den planerade FOAK-anläggningen i Chemelot Industrial Park i Geleen, Nederländerna, är byggd och igångsatt. Avtalet är inte exklusivt, vilket lämnar utrymme för fler kunder.",
+    tag: "Kommersialisering",
+    cls: ""
+  },
+  {
+    date: "16 okt 2025",
+    title: "Kvartalsrapport: framsteg mot kommersiell mognad",
+    body: "I rapporten för första kvartalet räkenskapsår 2026 lyfte vd Ofer Vicus fram fortsatt arbete med nästa generations anläggning. Bolaget gick under kvartalet med i branschorganisationen Plastics Industry Association (PSRA) och testade även syntetiskt konstgräs som ny råvara i sin process.",
+    tag: "Kvartalsrapport",
+    cls: "dim"
+  }
+];
+
+/* ===================== TICKER TAPE ===================== */
+const tapeItems = [
+  "ADUR · Aduro Clean Technologies",
+  "Hydrochemolytic™ Technology",
+  "FOAK-anläggning planeras · Chemelot, NL",
+  "TSX: ACT · CSE-avnotering genomförd",
+  "Nästa rapport 13 aug",
+  "52v spann $9.00–$18.19"
+];
+function buildTape(){
+  const el = document.getElementById('tapeInner');
+  const seq = [...tapeItems, ...tapeItems].map(t => `<span class="tape-item">${t}</span>`).join('');
+  el.innerHTML = seq;
+}
+buildTape();
+
+/* ===================== TIMELINE ===================== */
+function buildTimeline(){
+  const el = document.getElementById('timeline');
+  el.innerHTML = NEWS.map(n => `
+    <div class="t-item ${n.cls}">
+      <div class="t-dot"></div>
+      <div class="t-date">${n.date}</div>
+      <div class="t-title">${n.title}</div>
+      <div class="t-body">${n.body}</div>
+      <span class="t-tag">${n.tag}</span>
+    </div>
+  `).join('');
+}
+buildTimeline();
+
+/* ===================== PRICE ENGINE (real fetch + simulated fallback) ===================== */
+let price = REF_PRICE;
+let anchorPrice = REF_PRICE;   // last known REAL price (from Stooq) that micro-ticks revolve around
+let dayHigh = REF_PRICE;
+let dayLow = REF_PRICE;
+let vol = BASE_VOL;
+let liveMode = false;          // true once a real Stooq fetch has succeeded at least once
+let lastRealStamp = null;      // "date time" string from the feed
+const history = [];
+const historyLen = 60;
+for(let i=0;i<historyLen;i++) history.push(REF_PRICE);
+
+let momentumBuffer = [];
+
+function setFeedStatus(state, text){
+  const dot = document.getElementById('feedDot');
+  const label = document.getElementById('feedStatusText');
+  dot.className = 'dot' + (state==='live' ? ' live' : '');
+  label.textContent = text;
+}
+
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+  ]);
+}
+
+const STOOQ_URL = 'https://stooq.com/q/l/?s=adur.us&f=sd2t2ohlcv&h&e=csv';
+
+// Stooq itself does not send CORS headers to arbitrary origins, so a direct
+// browser fetch is blocked in most setups. We try direct first (works in some
+// environments), then fall back to two independent public CORS-relay
+// services that add the missing header. First one that returns valid CSV wins.
+const FETCH_STRATEGIES = [
+  { name: 'direkt', build: () => STOOQ_URL, parse: (t) => t },
+  { name: 'allorigins', build: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(STOOQ_URL), parse: (t) => t },
+  { name: 'corsproxy.io', build: () => 'https://corsproxy.io/?url=' + encodeURIComponent(STOOQ_URL), parse: (t) => t },
+  { name: 'r.jina.ai', build: () => 'https://r.jina.ai/' + STOOQ_URL, parse: (t) => t },
+];
+
+let lastWorkingStrategy = 0;
+let diagResults = [];
+
+function renderDiag(){
+  const box = document.getElementById('diagBox');
+  const lines = document.getElementById('diagLines');
+  const allGood = diagResults.length === 1 && diagResults[0].ok;
+  if(diagResults.length === 0 || allGood){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  lines.innerHTML = diagResults.map(r =>
+    `<div><span style="color:${r.ok ? 'var(--green)' : 'var(--red)'}">${r.ok ? '✓' : '✕'}</span> ${r.name}: ${r.msg}</div>`
+  ).join('');
+}
+
+async function tryFetchCsv(){
+  diagResults = [];
+  // start with whichever strategy worked last time
+  const order = [...Array(FETCH_STRATEGIES.length).keys()];
+  order.sort((a,b) => (a===lastWorkingStrategy?-1:0) - (b===lastWorkingStrategy?-1:0));
+  let lastErr = null;
+  for(const idx of order){
+    const strat = FETCH_STRATEGIES[idx];
+    try{
+      const res = await withTimeout(fetch(strat.build(), { cache: 'no-store' }), 6000);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const text = strat.parse(await res.text());
+      if(!text || text.indexOf(',') === -1) throw new Error('oväntat svarsformat');
+      lastWorkingStrategy = idx;
+      diagResults.push({ name: strat.name, ok: true, msg: 'lyckades (' + text.length + ' tecken)' });
+      renderDiag();
+      return { text, via: strat.name };
+    }catch(err){
+      const msg = (err && err.message) ? err.message : String(err);
+      console.warn('[ADUR feed] strategi "' + strat.name + '" misslyckades:', msg);
+      diagResults.push({ name: strat.name, ok: false, msg: msg });
+      lastErr = err;
+    }
+  }
+  renderDiag();
+  throw lastErr || new Error('alla källor misslyckades');
+}
+
+async function fetchRealQuote(){
+  const key = localStorage.getItem('adur_finnhub_key');
+  if(key){
+    try{
+      const url = 'https://finnhub.io/api/v1/quote?symbol=ADUR&token=' + encodeURIComponent(key);
+      const res = await withTimeout(fetch(url, { cache: 'no-store' }), 6000);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      const close = data.c;
+      if(!isFinite(close) || close <= 0) throw new Error('ogiltigt pris i svaret');
+
+      anchorPrice = close;
+      price = close;
+      if(isFinite(data.h)) dayHigh = Math.max(dayHigh, data.h);
+      if(isFinite(data.l)) dayLow = dayLow === REF_PRICE ? data.l : Math.min(dayLow, data.l);
+      lastRealStamp = data.t ? new Date(data.t*1000).toLocaleTimeString('sv-SE') : new Date().toLocaleTimeString('sv-SE');
+
+      if(!liveMode){
+        liveMode = true;
+        document.getElementById('priceSourceLabel').textContent = 'Senast (verklig kurs, källa: Finnhub)';
+        document.getElementById('chartHint').textContent = 'Kurspunkter hämtas från Finnhub var 20:e sekund. Linjen mellan hämtningarna är en lätt visuell interpolering, inte nya avslut.';
+        document.getElementById('keyBox').style.display = 'none';
+      }
+      diagResults = [];
+      renderDiag();
+      setFeedStatus('live', 'LIVE · Finnhub · ' + lastRealStamp);
+      document.getElementById('keyStatus').textContent = '✓ Ansluten';
+      document.getElementById('keyStatus').style.color = 'var(--green)';
+      pushHistoryPoint(price);
+      return true;
+    }catch(err){
+      const msg = (err && err.message) ? err.message : String(err);
+      setFeedStatus('down', 'Finnhub-fel: ' + msg);
+      document.getElementById('keyStatus').textContent = '✕ Kunde inte ansluta: ' + msg + ' (kontrollera att nyckeln stämmer)';
+      document.getElementById('keyStatus').style.color = 'var(--red)';
+      console.error('[ADUR feed] Finnhub misslyckades:', msg);
+      // fall through to no-key backup chain below
+    }
+  }
+
+  try{
+    const { text, via } = await tryFetchCsv();
+    const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const headerIdx = lines.findIndex(l => l.toLowerCase().startsWith('symbol,date,time'));
+    if(headerIdx === -1 || !lines[headerIdx+1]) throw new Error('kunde inte tolka svaret (' + via + ')');
+    const cols = lines[headerIdx+1].split(',');
+    // Symbol,Date,Time,Open,High,Low,Close,Volume
+    const close = parseFloat(cols[6]);
+    const high = parseFloat(cols[4]);
+    const low = parseFloat(cols[5]);
+    const volume = parseInt(cols[7], 10);
+    const dateStr = cols[1], timeStr = cols[2];
+    if(!isFinite(close) || close <= 0) throw new Error('ogiltigt pris');
+
+    anchorPrice = close;
+    price = close;
+    if(isFinite(high)) dayHigh = Math.max(dayHigh, high);
+    if(isFinite(low)) dayLow = dayLow === REF_PRICE ? low : Math.min(dayLow, low);
+    if(isFinite(volume) && volume > 0) vol = volume;
+    lastRealStamp = dateStr + ' ' + timeStr;
+
+    if(!liveMode){
+      liveMode = true;
+      document.getElementById('priceSourceLabel').textContent = 'Senast (verklig kurs, källa: Stooq — kan vara fördröjd)';
+      document.getElementById('chartHint').textContent = 'Kurspunkter hämtas från Stooq var 20:e sekund. Linjen mellan hämtningarna är en lätt visuell interpolering, inte nya avslut.';
+    }
+    setFeedStatus('live', 'LIVE · Stooq via ' + via + ' · ' + lastRealStamp);
+    pushHistoryPoint(price);
+    return true;
+  }catch(err){
+    if(!liveMode){
+      // never succeeded yet -> make clear this is estimated
+      document.getElementById('priceSourceLabel').textContent = 'Senast (uppskattad — livedata ej nåbar i denna webbläsare)';
+      document.getElementById('chartHint').textContent = 'Kunde inte hämta live-kurs härifrån, ens via reservkällor. Lägg till en gratis Finnhub-nyckel ovan för en pålitlig anslutning, eller visar en uppskattad rörelse kring senast kända stängningskurs $' + REF_PRICE.toFixed(2) + '.';
+    }
+    setFeedStatus('down', liveMode ? ('Live-hämtning misslyckades, visar senast kända: ' + (lastRealStamp||'–')) : 'Ingen livekälla nåbar — visar uppskattning');
+    console.error('[ADUR feed] alla källor misslyckades:', err.message || err);
+    return false;
+  }
+}
+
+function pushHistoryPoint(p){
+  history.push(p);
+  history.shift();
+}
+
+const ctx = document.getElementById('priceChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: history.map((_,i)=>i),
+    datasets: [{
+      data: history,
+      borderColor: '#3fe8a6',
+      backgroundColor: (c) => {
+        const g = c.chart.ctx.createLinearGradient(0,0,0,260);
+        g.addColorStop(0,'rgba(63,232,166,0.28)');
+        g.addColorStop(1,'rgba(63,232,166,0)');
+        return g;
+      },
+      borderWidth: 2,
+      fill: true,
+      tension: 0.35,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+    }]
+  },
+  options: {
+    responsive:true,
+    maintainAspectRatio:false,
+    animation: { duration: 400 },
+    plugins:{ legend:{display:false}, tooltip:{
+      callbacks:{ label: (i)=> '$'+i.parsed.y.toFixed(2) },
+      backgroundColor:'#0d1c18', borderColor:'rgba(158,201,188,0.28)', borderWidth:1,
+      titleColor:'#85a49b', bodyColor:'#eaf3ee', bodyFont:{family:'JetBrains Mono'}
+    }},
+    scales:{
+      x:{ display:false },
+      y:{
+        grid:{ color:'rgba(158,201,188,0.08)' },
+        ticks:{ color:'#547268', font:{family:'JetBrains Mono', size:10}, callback:(v)=>'$'+v.toFixed(1) }
+      }
+    }
+  }
+});
+
+function fmt(n){ return n.toLocaleString('sv-SE',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+function tick(){
+  // small visual jitter around the last known REAL anchor price
+  // (this is NOT a new trade — it's an interpolation cue between live fetches)
+  const jitterScale = liveMode ? 0.035 : 0.14;
+  const pull = (anchorPrice - price) * 0.12;
+  const shock = (Math.random()-0.5) * jitterScale;
+  price = Math.max(WK52_LOW*0.97, Math.min(WK52_HIGH*1.02, price + pull + shock));
+  dayHigh = Math.max(dayHigh, price);
+  dayLow = Math.min(dayLow, price);
+  if(!liveMode) vol += Math.floor(Math.random()*400);
+
+  history.push(price);
+  history.shift();
+  chart.data.labels = history.map((_,i)=>i);
+  chart.data.datasets[0].data = history;
+  const goingUp = price >= REF_PRICE;
+  chart.data.datasets[0].borderColor = goingUp ? '#3fe8a6' : '#ff6b5c';
+  chart.update('none');
+
+  // hero
+  document.getElementById('priceMain').textContent = price.toFixed(2);
+  const diff = price - REF_PRICE;
+  const pct = (diff/REF_PRICE)*100;
+  const changeEl = document.getElementById('priceChange');
+  changeEl.textContent = (diff>=0?'+':'') + diff.toFixed(2) + ' (' + (diff>=0?'+':'') + pct.toFixed(2) + '%) sedan referens';
+  changeEl.className = 'price-change ' + (diff>=0?'up':'down');
+
+  const hero = document.getElementById('heroCard');
+  hero.classList.remove('flash-up','flash-down');
+  void hero.offsetWidth;
+  hero.classList.add(diff>=0?'flash-up':'flash-down');
+
+  document.getElementById('statCap').textContent = '$' + (BASE_CAP_M * (price/REF_PRICE)).toFixed(1) + 'M';
+  document.getElementById('statVol').textContent = fmt(vol);
+  document.getElementById('dayRangeLabel').textContent = `Idag: $${dayLow.toFixed(2)} – $${dayHigh.toFixed(2)}`;
+
+  const rangePos = Math.max(0, Math.min(100, ((price - WK52_LOW) / (WK52_HIGH - WK52_LOW)) * 100));
+  document.getElementById('rangeMarker').style.left = rangePos + '%';
+
+  // gauge momentum
+  momentumBuffer.push(diff);
+  if(momentumBuffer.length > 8) momentumBuffer.shift();
+  const avgMove = momentumBuffer.reduce((a,b)=>a+b,0)/momentumBuffer.length;
+  let score = 50 + (avgMove / (REF_PRICE*0.04)) * 50;
+  score = Math.max(2, Math.min(98, score));
+  updateGauge(score);
+}
+
+function updateGauge(score){
+  const angle = -90 + (score/100)*180;
+  document.getElementById('needle').setAttribute('transform', `rotate(${angle} 115 118)`);
+  document.getElementById('gaugeScore').textContent = Math.round(score);
+  const labelEl = document.getElementById('gaugeLabel');
+  if(score >= 66){
+    labelEl.textContent = 'KÖP-LÄGE'; labelEl.style.background='var(--green-dim)'; labelEl.style.color='var(--green)';
+  } else if(score <= 34){
+    labelEl.textContent = 'SÄLJ-LÄGE'; labelEl.style.background='var(--red-dim)'; labelEl.style.color='var(--red)';
+  } else {
+    labelEl.textContent = 'HÅLL'; labelEl.style.background='var(--amber-dim)'; labelEl.style.color='var(--amber)';
+  }
+}
+updateGauge(50);
+setFeedStatus('down', 'Ansluter till kursdata…');
+
+const savedKey = localStorage.getItem('adur_finnhub_key');
+if(savedKey){
+  document.getElementById('finnhubKeyInput').value = savedKey;
+  document.getElementById('keyStatus').textContent = 'Ansluter med sparad nyckel…';
+}
+
+tick();
+setInterval(tick, 2400);
+fetchRealQuote();
+setInterval(fetchRealQuote, 20000);
+
+document.getElementById('retryFeedBtn').addEventListener('click', () => {
+  setFeedStatus('down', 'Försöker igen…');
+  fetchRealQuote();
+});
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+  const val = document.getElementById('finnhubKeyInput').value.trim();
+  if(!val){ document.getElementById('keyStatus').textContent = 'Klistra in en nyckel först.'; return; }
+  localStorage.setItem('adur_finnhub_key', val);
+  document.getElementById('keyStatus').textContent = 'Ansluter…';
+  document.getElementById('keyStatus').style.color = 'var(--text-dim)';
+  fetchRealQuote();
+});
+document.getElementById('clearKeyBtn').addEventListener('click', () => {
+  localStorage.removeItem('adur_finnhub_key');
+  document.getElementById('finnhubKeyInput').value = '';
+  document.getElementById('keyStatus').textContent = 'Nyckel borttagen.';
+  document.getElementById('keyStatus').style.color = 'var(--text-dim)';
+});
+
+/* ===================== MARKET STATUS + COUNTDOWN ===================== */
+function getETParts(d){
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone:'America/New_York', hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short'
+  });
+  const parts = {};
+  fmt.formatToParts(d).forEach(p=>parts[p.type]=p.value);
+  return parts;
+}
+
+function nextMarketOpenET(now){
+  // find the next Mon-Fri 09:30 ET at or after now
+  let candidate = new Date(now.getTime());
+  for(let i=0;i<8;i++){
+    const p = getETParts(candidate);
+    const isWeekday = !['Sat','Sun'].includes(p.weekday);
+    // build 9:30 ET for this candidate's date using an offset trick:
+    const openGuessLocal = new Date(candidate);
+    // compute ET offset by comparing formatted ET time to UTC
+    const etNow = new Date(candidate.toLocaleString('en-US', {timeZone:'America/New_York'}));
+    const utcNow = new Date(candidate.toLocaleString('en-US', {timeZone:'UTC'}));
+    const offsetMs = utcNow.getTime() - etNow.getTime();
+    const y = parseInt(p.year), mo = parseInt(p.month)-1, da = parseInt(p.day);
+    const openUTC = new Date(Date.UTC(y, mo, da, 9,30,0) + offsetMs);
+    if(isWeekday && openUTC.getTime() > now.getTime()){
+      return openUTC;
+    }
+    candidate = new Date(Date.UTC(y, mo, da, 12,0,0) + offsetMs + 24*3600*1000);
+  }
+  return null;
+}
+
+function isMarketOpenNow(now){
+  const p = getETParts(now);
+  const isWeekday = !['Sat','Sun'].includes(p.weekday);
+  if(!isWeekday) return false;
+  const h = parseInt(p.hour), m = parseInt(p.minute);
+  const mins = h*60+m;
+  return mins >= 9*60+30 && mins < 16*60;
+}
+
+function updateClocks(){
+  const now = new Date();
+  const open = nextMarketOpenET(now);
+  const marketOpen = isMarketOpenNow(now);
+
+  document.getElementById('marketDot').className = 'dot' + (marketOpen ? ' live':'');
+  document.getElementById('marketStatusText').textContent = marketOpen ? 'Marknaden är ÖPPEN' : 'Marknaden är STÄNGD';
+
+  if(open){
+    const diff = Math.max(0, open.getTime() - now.getTime());
+    const d = Math.floor(diff/86400000);
+    const h = Math.floor((diff%86400000)/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    const s = Math.floor((diff%60000)/1000);
+    document.getElementById('cdD').textContent = String(d).padStart(2,'0');
+    document.getElementById('cdH').textContent = String(h).padStart(2,'0');
+    document.getElementById('cdM').textContent = String(m).padStart(2,'0');
+    document.getElementById('cdS').textContent = String(s).padStart(2,'0');
+    document.getElementById('openLocal').textContent = open.toLocaleString('sv-SE', { dateStyle:'medium', timeStyle:'short' });
+  }
+  document.getElementById('localTime').textContent = now.toLocaleString('sv-SE', { dateStyle:'medium', timeStyle:'medium' });
+}
+updateClocks();
+setInterval(updateClocks, 1000);
+</script>
+</body>
+</html>

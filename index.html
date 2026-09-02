@@ -555,8 +555,10 @@ async function tryFetchCsv(){
   throw lastErr || new Error('alla källor misslyckades');
 }
 
+const DEFAULT_FINNHUB_KEY = 'dabvvj1r01qvvgl73rq0dabvvj1r01qvvgl73rqg';
+
 async function fetchRealQuote(){
-  const key = localStorage.getItem('adur_finnhub_key');
+  const key = localStorage.getItem('adur_finnhub_key') || DEFAULT_FINNHUB_KEY;
   if(key){
     try{
       const url = 'https://finnhub.io/api/v1/quote?symbol=ADUR&token=' + encodeURIComponent(key);
@@ -748,7 +750,7 @@ function updateGauge(score){
 updateGauge(50);
 setFeedStatus('down', 'Ansluter till kursdata…');
 
-const savedKey = localStorage.getItem('adur_finnhub_key');
+const savedKey = localStorage.getItem('adur_finnhub_key') || DEFAULT_FINNHUB_KEY;
 if(savedKey){
   document.getElementById('finnhubKeyInput').value = savedKey;
   document.getElementById('keyStatus').textContent = 'Ansluter med sparad nyckel…';
